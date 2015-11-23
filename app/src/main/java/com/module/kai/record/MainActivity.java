@@ -3,6 +3,9 @@ package com.module.kai.record;
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.hardware.Camera;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
+import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -14,7 +17,10 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 
+import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback {
 
@@ -23,7 +29,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     SurfaceHolder previewSurfaceHolder;
     boolean previewing = false;
 
-    private final String tag = "VideoServer";
+    private final String VIDEO_PATH_NAME = "/mnt/sdcard/kai/recordvideo.mp4";
+    private MediaRecorder mMediaRecorder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +52,71 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         Log.d("autofocus", "boolean:" + success);
                     }
                 });
+            }
+        });
+
+        findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                File dir = new File(Environment.getExternalStorageDirectory()
+                        + File.separator + Environment.DIRECTORY_PICTURES
+                        + File.separator + "KAI");
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+                myCamera.stopPreview();
+                myCamera.unlock();
+                File videofile = new File(dir, "KAI_" + System.currentTimeMillis() + ".mp4");
+                mMediaRecorder = new MediaRecorder();
+                mMediaRecorder.setCamera(myCamera);
+                mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+                mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+                mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
+                mMediaRecorder.setOutputFile(videofile.getAbsolutePath());
+                mMediaRecorder.setPreviewDisplay(previewSurfaceView.getHolder().getSurface());
+                mMediaRecorder.setMaxDuration(0);
+                mMediaRecorder.setMaxFileSize(0);
+                mMediaRecorder.setOnErrorListener(new MediaRecorder.OnErrorListener() {
+
+                    @Override
+                    public void onError(MediaRecorder mr, int what, int extra) {
+                        Log.e("Error Recording", what + " Extra " + extra);
+
+                    }
+                });
+                mMediaRecorder.setOnInfoListener(new MediaRecorder.OnInfoListener() {
+
+                    @Override
+                    public void onInfo(MediaRecorder mr, int what, int extra) {
+                        if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
+
+                        }
+
+                    }
+                });
+                runOnUiThread(new Runnable() {
+
+                    @Override
+                    public void run() {
+
+                        try {
+                            mMediaRecorder.prepare();
+                            mMediaRecorder.start();
+
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                });
+
+            }
+        });
+        findViewById(R.id.stop).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mMediaRecorder.stop();
+                mMediaRecorder.reset();
             }
         });
     }
@@ -75,6 +147,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     public void surfaceCreated(SurfaceHolder holder) {
         myCamera = Camera.open();
         setCameraDisplayOrientation(MainActivity.this, 0);
+
     }
 
     @Override
