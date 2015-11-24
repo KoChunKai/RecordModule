@@ -2,6 +2,7 @@ package com.module.kai.record;
 
 import android.app.Activity;
 import android.hardware.Camera;
+import android.location.Location;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
 import android.os.Bundle;
@@ -19,6 +20,9 @@ import android.view.WindowManager;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.OnStreetViewPanoramaReadyCallback;
+import com.google.android.gms.maps.StreetViewPanorama;
+import com.google.android.gms.maps.StreetViewPanoramaFragment;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -40,7 +44,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //screen always on
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        /*getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         previewSurfaceView = (SurfaceView)findViewById(R.id.surfaceView1);
         previewSurfaceHolder = previewSurfaceView.getHolder();
@@ -118,7 +122,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 mMediaRecorder.stop();
                 mMediaRecorder.reset();
             }
-        });
+        });*/
 
         initGoogleMap();
     }
@@ -213,7 +217,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     private Camera.AutoFocusCallback autoFocus = new Camera.AutoFocusCallback() {
         @Override
         public void onAutoFocus(boolean success, Camera camera) {
-            Log.d("camera", "autoFocus " + "b:"+ success);
+            Log.d("camera", "autoFocus " + "b:" + success);
 
         }
     };
@@ -223,13 +227,53 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         mapFragment.getMapAsync(onMapReadyCallback);
     }
 
+    Location now_Location;
+    boolean isinit = false;
     private OnMapReadyCallback onMapReadyCallback = new OnMapReadyCallback() {
         @Override
-        public void onMapReady(GoogleMap map) {
-            LatLng sydney = new LatLng(25.0222045,121.5226302);
-            map.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
+        public void onMapReady(final GoogleMap map) {
+            //map.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
             map.moveCamera(CameraUpdateFactory.zoomTo(14));
-            map.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+            //map.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+            map.setMyLocationEnabled(true);
+            map.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
+                @Override
+                public boolean onMyLocationButtonClick() {
+
+                    return true;
+                }
+            });
+            map.setOnMyLocationChangeListener(new GoogleMap.OnMyLocationChangeListener() {
+                @Override
+                public void onMyLocationChange(Location location) {
+                    Log.d("map", "onMyLocationChange");
+                    if (!isinit) {
+                        isinit = true;
+                        if (now_Location == null ||
+                                now_Location.getLatitude() != location.getLatitude() ||
+                                now_Location.getLongitude() != location.getLongitude()) {
+                            now_Location = location;
+                            initStreetView();
+                        }
+                    }
+                    LatLng sydney = new LatLng(location.getLatitude(), location.getLongitude());
+                    map.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+                }
+            });
+        }
+    };
+
+    private void initStreetView(){
+        StreetViewPanoramaFragment streetViewPanoramaFragment =
+                (StreetViewPanoramaFragment) getFragmentManager()
+                        .findFragmentById(R.id.streetviewpanorama);
+        streetViewPanoramaFragment.getStreetViewPanoramaAsync(onStreetViewPanoramaReadyCallback);
+    }
+
+    private OnStreetViewPanoramaReadyCallback onStreetViewPanoramaReadyCallback = new OnStreetViewPanoramaReadyCallback() {
+        @Override
+        public void onStreetViewPanoramaReady(StreetViewPanorama panorama) {
+            panorama.setPosition(new LatLng(now_Location.getLatitude(), now_Location.getLongitude()));
         }
     };
 }
