@@ -1,13 +1,12 @@
 package com.module.kai.record;
 
 import android.app.Activity;
-import android.content.pm.ActivityInfo;
 import android.hardware.Camera;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
+import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -17,10 +16,15 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback {
 
@@ -29,7 +33,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     SurfaceHolder previewSurfaceHolder;
     boolean previewing = false;
 
-    private final String VIDEO_PATH_NAME = "/mnt/sdcard/kai/recordvideo.mp4";
     private MediaRecorder mMediaRecorder;
 
     @Override
@@ -46,18 +49,15 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         previewSurfaceView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                myCamera.autoFocus(new Camera.AutoFocusCallback() {
-                    @Override
-                    public void onAutoFocus(boolean success, Camera camera) {
-                        Log.d("autofocus", "boolean:" + success);
-                    }
-                });
+                myCamera.autoFocus(autoFocus);
             }
         });
 
         findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Log.d("camera", "start");
+                previewSurfaceView.performClick();
                 File dir = new File(Environment.getExternalStorageDirectory()
                         + File.separator + Environment.DIRECTORY_PICTURES
                         + File.separator + "KAI");
@@ -102,7 +102,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         try {
                             mMediaRecorder.prepare();
                             mMediaRecorder.start();
-
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -115,10 +114,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         findViewById(R.id.stop).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Log.d("camera", "stop");
                 mMediaRecorder.stop();
                 mMediaRecorder.reset();
             }
         });
+
+        initGoogleMap();
     }
 
     @Override
@@ -145,13 +147,18 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
+        Log.d("camera", "surfaceCreated");
         myCamera = Camera.open();
+        Camera.Parameters params = myCamera.getParameters();
+        params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+        myCamera.setParameters(params);
         setCameraDisplayOrientation(MainActivity.this, 0);
 
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        Log.d("camera", "surfaceChange");
         if(previewing){
             myCamera.stopPreview();
             previewing = false;
@@ -202,4 +209,27 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }
         myCamera.setDisplayOrientation(result);
     }
+
+    private Camera.AutoFocusCallback autoFocus = new Camera.AutoFocusCallback() {
+        @Override
+        public void onAutoFocus(boolean success, Camera camera) {
+            Log.d("camera", "autoFocus " + "b:"+ success);
+
+        }
+    };
+
+    private void initGoogleMap(){
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        mapFragment.getMapAsync(onMapReadyCallback);
+    }
+
+    private OnMapReadyCallback onMapReadyCallback = new OnMapReadyCallback() {
+        @Override
+        public void onMapReady(GoogleMap map) {
+            LatLng sydney = new LatLng(25.0222045,121.5226302);
+            map.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
+            map.moveCamera(CameraUpdateFactory.zoomTo(14));
+            map.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        }
+    };
 }
